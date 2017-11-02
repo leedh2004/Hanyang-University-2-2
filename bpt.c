@@ -633,6 +633,7 @@ node * insert_into_leaf_after_splitting(node * root, node * leaf, int key, recor
  * into a node into which these can fit
  * without violating the B+ tree properties.
  */
+/*
 node * insert_into_node(node * root, node * n, 
         int left_index, int key, node * right) {
     int i;
@@ -646,7 +647,7 @@ node * insert_into_node(node * root, node * n,
     n->num_keys++;
     return root;
 }
-
+*/
 
 /* Inserts a new key and pointer to a node
  * into a node, causing the node's size to exceed
@@ -1321,7 +1322,7 @@ char * find(int64_t key, char *value){
 		
 	int i = 0, num_keys;
 	int64_t page_offset, keys;
-	char re[120], *s;
+	char *re;
 	
 	page_offset = find_leaf(key);
 	if(page_offset == -1) return NULL; 
@@ -1332,7 +1333,7 @@ char * find(int64_t key, char *value){
 	if(num_keys == 0) return NULL;
 
 	lseek(fd,page_offset+128,SEEK_SET);
-	for(i=0; i <num_keys; i++){
+	for(i=0; i < num_keys; i++){
 		read(fd,&keys,8);
 		lseek(fd,120,SEEK_CUR);
 		if( key == keys) break;
@@ -1341,8 +1342,7 @@ char * find(int64_t key, char *value){
 	else{
 		lseek(fd,-120,SEEK_CUR);
 		read(fd,re,120);
-		s = re;
-		return s;
+		return re;
 	}
 }
 
@@ -1419,19 +1419,19 @@ int64_t start_new_tree(int64_t key, char * value){
 	write(fd,&num_keys,4);
 	lseek(fd,8,SEEK_SET);
 	write(fd,&L_O,8); // Root page offset 설정
-	return L_O;
+	return 0;
 }
 
 int insert_into_leaf(int64_t L_O, int64_t key, char* value){
-	int i, insertion_point,num_keys, copy;
+	int insertion_point,num_keys, copy;
 	int64_t leaf_key;
-	char leaf_value[120];
+	char *leaf_value;
 
-	lseek(fd,L_O+12,SEEK_SET); // L_O로 number of keys 로이동
+	lseek(fd,L_O+12,SEEK_SET); // L_O number of keys 로이동
 	read(fd,&num_keys,4);
 	lseek(fd,L_O + 128*num_keys,SEEK_SET); //L_O 마지막 키 값으로 이동
 	read(fd,&leaf_key,8);
-	read(fd,&leaf_value,120);
+	read(fd,leaf_value,120);
 
 	insertion_point = num_keys;
 
@@ -1441,6 +1441,7 @@ int insert_into_leaf(int64_t L_O, int64_t key, char* value){
 		write(fd,leaf_value,120);
 
 		insertion_point--;
+
 		lseek(fd,L_O + insertion_point * 128,SEEK_SET);
 		read(fd,&leaf_key,8);
 		read(fd,leaf_value,120);
@@ -1454,9 +1455,9 @@ int insert_into_leaf(int64_t L_O, int64_t key, char* value){
 	write(fd,&num_keys,4);
 	return 0;
 }
+//부모이어줄 필요도 없고, 헤더페이지도 생각 안해도 됨
 
 int insert_into_node(int64_t P_O, int64_t N_key, int64_t N_L_O){
-	//자식들의 부모 이어줘야해, 헤더페이지도 생각..
 
 	int num_keys, insertion_point;
 	int64_t node_key, page_offset;
@@ -1480,10 +1481,9 @@ int insert_into_node(int64_t P_O, int64_t N_key, int64_t N_L_O){
 		read(fd,&node_key,8);
 		read(fd,&page_offset,8);
 	}
-	lseek(fd,L_O+128+((insertion_point)*16),SEEK_SET);
+	lseek(fd,P_O+128+((insertion_point)*16),SEEK_SET);
 	write(fd,&N_key,8);
 	write(fd,&N_L_O,8);
-
 	return 0;
 }
 
@@ -1496,14 +1496,13 @@ int insert_into_node_after_splitting(int64_t P_O, int64_t N_key, int64_t N_L_O){
 	//근데 꽉차 그러면, 그럼 여기서 이제 P_O를 스플릿하는거야
 	//부모자식도 이어주는거 생각해야 하고
 	int i,j,insertion_point,num_keys;
-	int64_t N_P_O, node_key, node_offset,copy_key,copy_offset;
+	int64_t N_P_O, node_key, node_offset,copy_key,copy_offset,N_offset;
 	
-	insertion_index = 0;
 	N_P_O = make_node();
 	
 	lseek(fd,P_O+12,SEEK_SET); // 추가할 P_O의 number of keys 로 이동
 	read(fd,&num_keys,4);
-	lseek(fd,P_O+128+((num_keys-1)*16)); // 추가할 P_O의 마지막 키 값으로 이동
+	lseek(fd,P_O+128+((num_keys-1)*16),SEEK_SET); // 추가할 P_O의 마지막 키 값으로 이동
 	read(fd,&node_key,8);
 	read(fd,&node_offset,8);
 
@@ -1521,15 +1520,21 @@ int insert_into_node_after_splitting(int64_t P_O, int64_t N_key, int64_t N_L_O){
 	}
 
 	lseek(fd,P_O+128+((insertion_point)*16),SEEK_SET);
-	write(fd,&N_Key,8);
+	write(fd,&N_key,8);
 	write(fd,&N_L_O,8);
 	//이 밑에 3줄 뭔가 필요없는 것 같은데 혹시나해서 그냥  안건들래..
 	lseek(fd,P_O+12,SEEK_SET);
 	num_keys++;
 	write(fd,&num_keys,4);
-	//아 123빼고 옮겨야 하구나! 해결했다 씨바 123오프셋값을 맨왼쪽에 써주고 123 올리면 된다
+	//아 123빼고 옮겨야 하구나! 해결했다 씨바 123오프셋값을 맨왼쪽에 써주고 124 올리면 된다
 	//그리고 자식의 부모 오프셋값을 N_P_O해주면 되겠다.
-	for(i=123,j=0; i<248;i++,j++){
+	lseek(fd,P_O+128+(16*123),SEEK_SET);
+	read(fd,&N_key,8);
+	read(fd,&N_offset,8);
+	lseek(fd,N_P_O+120,SEEK_SET);
+	write(fd,&N_offset,8);
+
+	for(i=124,j=0; i<248;i++,j++){
 		lseek(fd,P_O+128+(i*16),SEEK_SET);
 		read(fd,&copy_key,8);
 		read(fd,&copy_offset,8);
@@ -1537,32 +1542,25 @@ int insert_into_node_after_splitting(int64_t P_O, int64_t N_key, int64_t N_L_O){
 		write(fd,&copy_key,8);
 		write(fd,&copy_offset,8);
 	}
-	//다 옮겼어
-	//이제 부모 설정해야지
-
-	//이제 248개가 꽉 찼다. key[123]이 중간값
-
-	return insert_into_parent(P_O,N_P_O);
+	//이제 부모 설정은 insert into parent한테 맡긴다.
+	return insert_into_parent(P_O,N_P_O,N_key);
 }
-
-int insert_into_parent(int64_t L_O, int64_t N_L_O){
+//여기까지 디버깅
+int insert_into_parent(int64_t L_O, int64_t N_L_O, int64_t N_key){
 	//맨처음 리프노드의 parent를 내가 -1로 했다는 가정 하에 작성해봄
 	//즉 루트가 리프인 경우를  생각해야 하니까
 	int num_keys;
-	int64_t P_O, N_key,R_O; //Parent offset, New key, Root offset
-	char * N_value;
+	int64_t P_O, R_O; //Parent offset, New key, Root offset
 
 	lseek(fd,L_O,SEEK_SET); // 왼쪽 노드의 부모 오프셋
-	read(N_O,&P_O,8);
-	
-	lseek(fd,N_L_O+128,SEEK_SET); //루트에 넣을 키 값
-	read(fd,&N_key,8);
+	read(fd,&P_O,8);
 
 	if(P_O == -1){ //부모가 존재하지 않는다, 새로운 루트 생성해야 함
 		R_O = make_node();
 		num_keys = 1;
 		lseek(fd,R_O+12,SEEK_SET);
 		write(fd,&num_keys,4); // 자식 1개 생성되니까
+		
 		lseek(fd,R_O+120,SEEK_SET);
 		write(fd,&L_O,8);
 		write(fd,&N_key,8);
@@ -1580,9 +1578,9 @@ int insert_into_parent(int64_t L_O, int64_t N_L_O){
 		read(fd,&num_keys,4);
 		if (num_keys < 248){//여기서 이어주고 부모 자식 이어주자 어차피 스플릿 안생겨
 			lseek(fd,L_O,SEEK_SET);
-			write(fd,&R_O,8);
+			write(fd,&P_O,8);
 			lseek(fd,N_L_O,SEEK_SET);
-			write(fd,&R_O,8);
+			write(fd,&P_O,8);
 			return insert_into_node(P_O, N_key, N_L_O); // 넣어야 할 parent page offset과 넣어야 할 key 값을 전달한다.
 		}
 		return insert_into_node_after_splitting(P_O, N_key, N_L_O);
@@ -1590,23 +1588,26 @@ int insert_into_parent(int64_t L_O, int64_t N_L_O){
 }
 
 
-int insert_into_leaf_after_spliting(int64_t L_O, int key, char * value){
-	int i,j;
-	int64_t N_L_O, R_S_O, copy_key, re_key; //new leaf offset, right sibling offset, return key
-	char* copy_val,re_value;
+//넣을 리프페이지 , 키값, value값 받았음, 디버깅 해봤는데 오류 없는 것 같아.
+int insert_into_leaf_after_splitting(int64_t L_O, int64_t key, char * value){
+	int i,j,insertion_point,num_keys,leaf_key;
+	int64_t N_L_O, R_S_O, copy_key, re_key,N_key; //new leaf offset, right sibling offset, return key
+	char *copy_val,*re_value,*leaf_value;
+
 	N_L_O = make_leaf();
-	
-	insertion_index = 0;
 	
 	/* 위 함수 복붙했음 일단 추가를 한 뒤에, 나눌 생각
 	   쓰여진 데이터들은 일단은 지우지 않을 생각임, 
 	   왜냐면 어차피 num_keys에 의해 관리될 것이므로 */
-
+/*
 	lseek(fd,L_O+12,SEEK_SET); // L_O로 number of keys 로이동
-	read(fd,&num_keys,4);
+	read(fd,&num_keys,4); //사실 31이니까 굳이 읽을필요는 없지..
+*/
+	num_keys = 30;
+
 	lseek(fd,L_O + 128*num_keys,SEEK_SET); //L_O 마지막 키 값으로 이동
 	read(fd,&leaf_key,8);
-	read(fd,&leaf_value,120);
+	read(fd,leaf_value,120);
 
 	insertion_point = num_keys;
 
@@ -1624,17 +1625,14 @@ int insert_into_leaf_after_spliting(int64_t L_O, int key, char * value){
 	lseek(fd,L_O + (insertion_point+1)*128,SEEK_SET);
 	write(fd,&key,8);
 	write(fd,value,120);
-	lseek(fd,L_O+12,SEEK_SET);
-	num_keys++; 
-	write(fd,&num_keys,4);
-	
+
 	/*이제 31개 되었으니.. key[15] 가 중간값이겠네.
 	  그러면 15부터 30까지 새로운 노드고, 이전노드에 right sibiling offset으로 이어준다
 	  루트에 15를 추가해야 겠지?*/
 	//이전 노드의  right sibling을 새로운 애의 right sibling 으로 설정하자
 	
 	lseek(fd,L_O+120,SEEK_SET); 
-	read(fd,&R_S_O,8); 
+	read(fd,&R_S_O,8); //원래 right sibling offset
 
 	lseek(fd,L_O+120,SEEK_SET); 
 	write(fd,&N_L_O,8);
@@ -1644,6 +1642,8 @@ int insert_into_leaf_after_spliting(int64_t L_O, int key, char * value){
 	//이어주는 것 까지 설정
 	//new_leaf_node에 keys[15]~keys[30] insertion
 	
+	//현재 꽉찬 노드
+
 	for(i=15,j=0;i<31;i++,j++){
 		lseek(fd,L_O+((i+1)*128),SEEK_SET);
 		read(fd,&copy_key,8);
@@ -1652,16 +1652,21 @@ int insert_into_leaf_after_spliting(int64_t L_O, int key, char * value){
 		write(fd,&copy_key,8);
 		write(fd,copy_val,120);
 	}
-	//key값 전부 옮겼으.., 부모 공유 안한거같은데?
+
+	lseek(fd,N_L_O+128,SEEK_SET);
+	read(fd,&N_key,8);
+
 	lseek(fd,L_O+12,SEEK_SET);
 	copy_key = 15; 
 	write(fd,&copy_key,8);
+
 	lseek(fd,N_L_O+12,SEEK_SET);
 	copy_key = 16;
 	write(fd,&copy_key,8);
+
 	//number of keys 값들 수정
-	
-	return insert_into_parent(L_O, N_L_O);
+	printf("여기까진!");
+	return insert_into_parent(L_O, N_L_O, N_key); //부모 공유는 여기서!
 }
 
 
@@ -1681,6 +1686,7 @@ int insert(int64_t key, char * value){
 
 	L_O = find_leaf(key); //넣어야 할 리프 페이지의 오프셋 받음
 	printf("L_O : %ld\n",L_O);
+
 	lseek(fd,L_O+12,SEEK_SET); // 리프 페이지로 이동
 	read(fd,&num_keys,4); // key 개수 받음 
 	//order 31
@@ -1688,7 +1694,7 @@ int insert(int64_t key, char * value){
 	if (num_keys < 31){
 		insert_into_leaf(L_O,key,value);
 		return 0;
-	}
-
-	return insert_into_leaf_after_splitting(L_O,key,value);
+	}else
+		return insert_into_leaf_after_splitting(L_O,key,value);
 }
+
