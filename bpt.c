@@ -1456,6 +1456,8 @@ int insert_into_leaf(int64_t L_O, int64_t key, char* value){
 }
 
 int insert_into_node(int64_t P_O, int64_t N_key, int64_t N_L_O){
+	//자식들의 부모 이어줘야해, 헤더페이지도 생각..
+
 	int num_keys, insertion_point;
 	int64_t node_key, page_offset;
 
@@ -1481,36 +1483,66 @@ int insert_into_node(int64_t P_O, int64_t N_key, int64_t N_L_O){
 	lseek(fd,L_O+128+((insertion_point)*16),SEEK_SET);
 	write(fd,&N_key,8);
 	write(fd,&N_L_O,8);
-	
+
 	return 0;
 }
 
-/*
-	while(insertion_point > 0 && leaf_key > key){
-		lseek(fd,L_O+128*(insertion_point+1),SEEK_SET);
-		write(fd,&leaf_key,8);
-		write(fd,leaf_value,120);
+int insert_into_node_after_splitting(int64_t P_O, int64_t N_key, int64_t N_L_O){ //부모의 부모로 전달한다..
+	//P_O에 있는 페런트 페이지 오프셋이 꽉찼으니까 이걸 분할해줘야함 이제
+	//총 248개의 키값들이 있다.
+	// 0 ~ 123 / 123 ~ 247 으로 나누고 123이 부모가 되는거야
 
-		insertion_point--;
-		lseek(fd,L_O + insertion_point * 128,SEEK_SET);
-		read(fd,&leaf_key,8);
-		read(fd,leaf_value,120);
-	}
+	//여기서 하는게, 키 값을 P_O에 정렬해서 넣어줘
+	//근데 꽉차 그러면, 그럼 여기서 이제 P_O를 스플릿하는거야
+	//부모자식도 이어주는거 생각해야 하고
+	int i,j,insertion_point,num_keys;
+	int64_t N_P_O, node_key, node_offset,copy_key,copy_offset;
 	
-	lseek(fd,L_O + (insertion_point+1)*128,SEEK_SET);
-	write(fd,&key,8);
-	write(fd,value,120);
-	lseek(fd,L_O+12,SEEK_SET);
-	num_keys++; 
-*/
+	insertion_index = 0;
+	N_P_O = make_node();
+	
+	lseek(fd,P_O+12,SEEK_SET); // 추가할 P_O의 number of keys 로 이동
+	read(fd,&num_keys,4);
+	lseek(fd,P_O+128+((num_keys-1)*16)); // 추가할 P_O의 마지막 키 값으로 이동
+	read(fd,&node_key,8);
+	read(fd,&node_offset,8);
 
-int insert_into_node_after_splitting(){
+	insertion_point = num_keys;
 
+	while(insertion_point > 0 && node_key > N_key){
+		lseek(fd,P_O+128+((insertion_point)*16),SEEK_SET);
+		write(fd,&node_key,8);
+		write(fd,&node_offset,8);
+		
+		insertion_point--;
+		lseek(fd,P_O + 128 + ((insertion_point-1)*16),SEEK_SET);
+		write(fd,&node_key,8);
+		write(fd,&node_offset,8);
+	}
 
+	lseek(fd,P_O+128+((insertion_point)*16),SEEK_SET);
+	write(fd,&N_Key,8);
+	write(fd,&N_L_O,8);
+	//이 밑에 3줄 뭔가 필요없는 것 같은데 혹시나해서 그냥  안건들래..
+	lseek(fd,P_O+12,SEEK_SET);
+	num_keys++;
+	write(fd,&num_keys,4);
+	//아 123빼고 옮겨야 하구나! 해결했다 씨바 123오프셋값을 맨왼쪽에 써주고 123 올리면 된다
+	//그리고 자식의 부모 오프셋값을 N_P_O해주면 되겠다.
+	for(i=123,j=0; i<248;i++,j++){
+		lseek(fd,P_O+128+(i*16),SEEK_SET);
+		read(fd,&copy_key,8);
+		read(fd,&copy_offset,8);
+		lseek(fd,N_P_O+128+(j*16),SEEK_SET);
+		write(fd,&copy_key,8);
+		write(fd,&copy_offset,8);
+	}
+	//다 옮겼어
+	//이제 부모 설정해야지
 
+	//이제 248개가 꽉 찼다. key[123]이 중간값
 
-
-	return 0;
+	return insert_into_parent(P_O,N_P_O);
 }
 
 int insert_into_parent(int64_t L_O, int64_t N_L_O){
@@ -1543,13 +1575,17 @@ int insert_into_parent(int64_t L_O, int64_t N_L_O){
 		lseek(fd,N_L_O,SEEK_SET);
 		write(fd,&R_O,8);
 		return 0;
-	}else{
+	}else{ //여기서 아직 자식들의 부모를 이어주지 않았음, 그냥 여기서 이어주면 될 것 같아.
 		lseek(fd,P_O+12,SEEK_SET);
 		read(fd,&num_keys,4);
-		if (num_keys < 248){
+		if (num_keys < 248){//여기서 이어주고 부모 자식 이어주자 어차피 스플릿 안생겨
+			lseek(fd,L_O,SEEK_SET);
+			write(fd,&R_O,8);
+			lseek(fd,N_L_O,SEEK_SET);
+			write(fd,&R_O,8);
 			return insert_into_node(P_O, N_key, N_L_O); // 넣어야 할 parent page offset과 넣어야 할 key 값을 전달한다.
 		}
-		return insert_into_node_after_splitting();
+		return insert_into_node_after_splitting(P_O, N_key, N_L_O);
 	}
 }
 
@@ -1616,7 +1652,7 @@ int insert_into_leaf_after_spliting(int64_t L_O, int key, char * value){
 		write(fd,&copy_key,8);
 		write(fd,copy_val,120);
 	}
-	//key값 전부 옮겼으..
+	//key값 전부 옮겼으.., 부모 공유 안한거같은데?
 	lseek(fd,L_O+12,SEEK_SET);
 	copy_key = 15; 
 	write(fd,&copy_key,8);
