@@ -1283,7 +1283,9 @@ int64_t takefreepage(){ // 프리페이지의 오프셋 반환
 	freepage_num--; //프리페이지 갯수 차감
 	lseek(fd,0,SEEK_SET);
 	NF_O = F_O + 4096;
+	
 	write(fd,&NF_O,8); // 헤더페이지의 프리페이지 오프셋 변경
+	printf("take free page %d\n", F_O);
 	return F_O;
 }
 
@@ -1318,12 +1320,14 @@ int open_db(char * pathname){
 		return -1; // fail
 }
 
-char * find(int64_t key, char *value){
+char * find(int64_t key){
 		
 	int i = 0, num_keys;
 	int64_t page_offset, keys;
 	char *re;
 	
+	re = (char*)malloc(sizeof(char)*120);
+
 	page_offset = find_leaf(key);
 	if(page_offset == -1) return NULL; 
 
@@ -1335,17 +1339,79 @@ char * find(int64_t key, char *value){
 	lseek(fd,page_offset+128,SEEK_SET);
 	for(i=0; i < num_keys; i++){
 		read(fd,&keys,8);
+		if(key == keys) break;
 		lseek(fd,120,SEEK_CUR);
-		if( key == keys) break;
 	}
 	if ( i == num_keys) return NULL;
 	else{
-		//lseek(fd,-120,SEEK_CUR);
-		//read(fd,re,120);
-		return value;
+		read(fd,re,120);
+		return re;
 	}
 }
 
+/*
+char * find(int64_t key){
+		
+	int i = 0, num_keys;
+	int64_t page_offset, keys;
+	char arr[120], *val;
+	
+	page_offset = find_leaf(key);
+	if(page_offset == -1) return NULL; 
+
+	lseek(fd,page_offset+12,SEEK_SET);
+	read(fd,&num_keys,4);
+	
+	if(num_keys == 0) return NULL;
+
+	lseek(fd,page_offset+128,SEEK_SET);
+	
+	for(i=0; i < num_keys; i++){
+		read(fd,&keys,8);
+		if(key == keys) break;
+		lseek(fd,120,SEEK_CUR);
+	}
+	if ( i == num_keys) return NULL;
+	else{
+		//read(fd,arr,120);
+		//val = arr;
+		return "abc";
+	}
+}
+*/
+//디버깅 완료 20171103, 맨 마지막 세줄 return value로 바꾸면 될 것 같아
+/*
+char * find(int64_t key, char * value){
+		
+	int i = 0, num_keys;
+	int64_t page_offset, keys;
+	char take[120], *re;
+	
+	page_offset = find_leaf(key);
+	if(page_offset == -1) return NULL; 
+
+	lseek(fd,page_offset+12,SEEK_SET);
+	read(fd,&num_keys,4);
+	
+	if(num_keys == 0) return NULL;
+
+	lseek(fd,page_offset+128,SEEK_SET);
+	printf("num_keys: %d",num_keys);
+	for(i=0; i < num_keys; i++){
+		read(fd,&keys,8);
+		if( key == keys) break;
+		lseek(fd,120,SEEK_CUR);
+	}
+	if ( i == num_keys) return NULL;
+	else{
+		read(fd,take,120);
+		re = take;
+		return re;
+	}
+}
+*/
+
+//디버깅 완료 20171103
 int64_t find_leaf(int64_t key){
 	int i, num_keys; 
 	int64_t R_O, isLeaf, keys, page_offset, buf;
@@ -1378,7 +1444,7 @@ int64_t find_leaf(int64_t key){
 	}
 	return page_offset; // Leaf의 page offset
 }
-
+//디버깅 완료
 int64_t make_node(){
 
 	int is_Leaf;
@@ -1394,7 +1460,7 @@ int64_t make_node(){
 
 	return offset;
 }
-
+//디버깅 완료
 int64_t make_leaf(){
 
 	int64_t L_O;
@@ -1406,9 +1472,9 @@ int64_t make_leaf(){
 	return L_O;
 }
 
-
+//디버깅 완료
 int64_t start_new_tree(int64_t key, char * value){
-	int64_t F_O, val, L_O, R_O;
+	int64_t F_O, val, L_O, R_O, R_S_O;
 	int isLeaf,num_keys;
 	L_O = make_leaf();// 리프 만듬 
 	lseek(fd,L_O+128,SEEK_SET); //Leaf node의 첫번째 키 값으로 이동
@@ -1419,17 +1485,21 @@ int64_t start_new_tree(int64_t key, char * value){
 	write(fd,&num_keys,4);
 	lseek(fd,8,SEEK_SET);
 	write(fd,&L_O,8); // Root page offset 설정
+	R_S_O = 0;
+	lseek(fd,L_O+120,SEEK_SET);
+	write(fd,&R_S_O,8);
 	return 0;
 }
-
+//디버깅 완료
 int insert_into_leaf(int64_t L_O, int64_t key, char* value){
 	int insertion_point,num_keys, copy;
 	int64_t leaf_key;
-	char *leaf_value;
+	char leaf_value[120];
 
 	lseek(fd,L_O+12,SEEK_SET); // L_O number of keys 로이동
 	read(fd,&num_keys,4);
-	lseek(fd,L_O + 128*num_keys,SEEK_SET); //L_O 마지막 키 값으로 이동
+
+	lseek(fd,L_O +128*num_keys,SEEK_SET); //L_O 마지막 키 값으로 이동
 	read(fd,&leaf_key,8);
 	read(fd,leaf_value,120);
 
@@ -1450,13 +1520,15 @@ int insert_into_leaf(int64_t L_O, int64_t key, char* value){
 	lseek(fd,L_O + (insertion_point+1)*128,SEEK_SET);
 	write(fd,&key,8);
 	write(fd,value,120);
+
 	lseek(fd,L_O+12,SEEK_SET);
 	num_keys++;
 	write(fd,&num_keys,4);
+
 	return 0;
 }
-//부모이어줄 필요도 없고, 헤더페이지도 생각 안해도 됨
 
+//ㅅㅂ 진짜 잘짰는데?
 int insert_into_node(int64_t P_O, int64_t N_key, int64_t N_L_O){
 
 	int num_keys, insertion_point;
@@ -1481,11 +1553,17 @@ int insert_into_node(int64_t P_O, int64_t N_key, int64_t N_L_O){
 		read(fd,&node_key,8);
 		read(fd,&page_offset,8);
 	}
+
 	lseek(fd,P_O+128+((insertion_point)*16),SEEK_SET);
 	write(fd,&N_key,8);
 	write(fd,&N_L_O,8);
+	
+	lseek(fd,P_O+12,SEEK_SET);
+	num_keys++;
+	write(fd,&num_keys,4);
 	return 0;
 }
+
 
 int insert_into_node_after_splitting(int64_t P_O, int64_t N_key, int64_t N_L_O){ //부모의 부모로 전달한다..
 	//P_O에 있는 페런트 페이지 오프셋이 꽉찼으니까 이걸 분할해줘야함 이제
@@ -1545,7 +1623,8 @@ int insert_into_node_after_splitting(int64_t P_O, int64_t N_key, int64_t N_L_O){
 	//이제 부모 설정은 insert into parent한테 맡긴다.
 	return insert_into_parent(P_O,N_P_O,N_key);
 }
-//여기까지 디버깅
+
+//여기맨 밑 전까지 디버깅
 int insert_into_parent(int64_t L_O, int64_t N_L_O, int64_t N_key){
 	//맨처음 리프노드의 parent를 내가 -1로 했다는 가정 하에 작성해봄
 	//즉 루트가 리프인 경우를  생각해야 하니까
@@ -1557,6 +1636,8 @@ int insert_into_parent(int64_t L_O, int64_t N_L_O, int64_t N_key){
 
 	if(P_O == -1){ //부모가 존재하지 않는다, 새로운 루트 생성해야 함
 		R_O = make_node();
+		printf("12288다음은 여기겠고");
+
 		num_keys = 1;
 		lseek(fd,R_O+12,SEEK_SET);
 		write(fd,&num_keys,4); // 자식 1개 생성되니까
@@ -1564,45 +1645,47 @@ int insert_into_parent(int64_t L_O, int64_t N_L_O, int64_t N_key){
 		lseek(fd,R_O+120,SEEK_SET);
 		write(fd,&L_O,8);
 		write(fd,&N_key,8);
-		write(fd,&N_L_O,8); // 키값들 넣어줬어
+		write(fd,&N_L_O,8); // 키값+오프셋들 넣어줬어
+
 		lseek(fd,8,SEEK_SET);
 		write(fd,&R_O,8); //헤더페이지에서 이어줌
 		//이제 자식들의 부모를 이어주자
 		lseek(fd,L_O,SEEK_SET);
 		write(fd,&R_O,8);
+
 		lseek(fd,N_L_O,SEEK_SET);
 		write(fd,&R_O,8);
 		return 0;
 	}else{ //여기서 아직 자식들의 부모를 이어주지 않았음, 그냥 여기서 이어주면 될 것 같아.
 		lseek(fd,P_O+12,SEEK_SET);
 		read(fd,&num_keys,4);
+		
 		if (num_keys < 248){//여기서 이어주고 부모 자식 이어주자 어차피 스플릿 안생겨
-			lseek(fd,L_O,SEEK_SET);
-			write(fd,&P_O,8);
 			lseek(fd,N_L_O,SEEK_SET);
 			write(fd,&P_O,8);
-			return insert_into_node(P_O, N_key, N_L_O); // 넣어야 할 parent page offset과 넣어야 할 key 값을 전달한다.
+			return insert_into_node(P_O, N_key, N_L_O); 
+			// 넣어야 할 parent page offset과 넣어야 할 key 값을 전달한다.
 		}
 		return insert_into_node_after_splitting(P_O, N_key, N_L_O);
 	}
 }
 
-
+//이거 사실 여기서 넣을 필요도 없는데, 잘못했네
+//디버깅 완료
 //넣을 리프페이지 , 키값, value값 받았음, 디버깅 해봤는데 오류 없는 것 같아.
 int insert_into_leaf_after_splitting(int64_t L_O, int64_t key, char * value){
 	int i,j,insertion_point,num_keys,leaf_key;
 	int64_t N_L_O, R_S_O, copy_key, re_key,N_key; //new leaf offset, right sibling offset, return key
-	char *copy_val,*re_value,*leaf_value;
+	char copy_val[120],leaf_value[120];
 
-	N_L_O = make_leaf();
-	
-	/* 위 함수 복붙했음 일단 추가를 한 뒤에, 나눌 생각
-	   쓰여진 데이터들은 일단은 지우지 않을 생각임, 
-	   왜냐면 어차피 num_keys에 의해 관리될 것이므로 */
-/*
+//	N_L_O = make_leaf();
+
+//마지막 수정.. 필요 없는 거였어 생각해보니
+/*	
 	lseek(fd,L_O+12,SEEK_SET); // L_O로 number of keys 로이동
 	read(fd,&num_keys,4); //사실 31이니까 굳이 읽을필요는 없지..
 */
+
 	num_keys = 30;
 
 	lseek(fd,L_O + 128*num_keys,SEEK_SET); //L_O 마지막 키 값으로 이동
@@ -1630,7 +1713,9 @@ int insert_into_leaf_after_splitting(int64_t L_O, int64_t key, char * value){
 	  그러면 15부터 30까지 새로운 노드고, 이전노드에 right sibiling offset으로 이어준다
 	  루트에 15를 추가해야 겠지?*/
 	//이전 노드의  right sibling을 새로운 애의 right sibling 으로 설정하자
-	
+
+	N_L_O = make_leaf();
+	printf("8192 다음 여기지\n");
 	lseek(fd,L_O+120,SEEK_SET); 
 	read(fd,&R_S_O,8); //원래 right sibling offset
 
@@ -1639,7 +1724,9 @@ int insert_into_leaf_after_splitting(int64_t L_O, int64_t key, char * value){
 	
 	lseek(fd,N_L_O+120,SEEK_SET);
 	write(fd,&R_S_O,8);
+	
 	//이어주는 것 까지 설정
+	//원래 노드 keys[0]~keys[15] 
 	//new_leaf_node에 keys[15]~keys[30] insertion
 	
 	//현재 꽉찬 노드
@@ -1657,15 +1744,15 @@ int insert_into_leaf_after_splitting(int64_t L_O, int64_t key, char * value){
 	read(fd,&N_key,8);
 
 	lseek(fd,L_O+12,SEEK_SET);
-	copy_key = 15; 
-	write(fd,&copy_key,8);
+	num_keys = 15; 
+	write(fd,&num_keys,8);
 
 	lseek(fd,N_L_O+12,SEEK_SET);
-	copy_key = 16;
-	write(fd,&copy_key,8);
+	num_keys = 16;
+	write(fd,&num_keys,8);
 
 	//number of keys 값들 수정
-	printf("여기까진!");
+	printf("-------split!\n");
 	return insert_into_parent(L_O, N_L_O, N_key); //부모 공유는 여기서!
 }
 
@@ -1674,15 +1761,16 @@ int insert(int64_t key, char * value){
 
 	int64_t R_O,F_O,L_O,val; // root page offset, free page offset, leaf page offset
 	int num_keys;
+	char * f;
 
-	if (find(key,value) != NULL) return -1; // 존재하므로 실패
+	if ( (f =find(key)) != NULL) return -1; // 존재하므로 실패
+	free(f);
 
 	lseek(fd,8,SEEK_SET);
 	read(fd,&R_O,8);// root page offset
 	
-	if(R_O == -1){
+	if(R_O == -1)
 		return start_new_tree(key,value);
-	}
 
 	L_O = find_leaf(key); //넣어야 할 리프 페이지의 오프셋 받음
 	printf("L_O : %ld\n",L_O);
@@ -1691,10 +1779,9 @@ int insert(int64_t key, char * value){
 	read(fd,&num_keys,4); // key 개수 받음 
 	//order 31
 	
-	if (num_keys < 31){
-		insert_into_leaf(L_O,key,value);
-		return 0;
-	}else
+	if (num_keys < 30) // 지금 31개 있으면 밑으로 가야해
+		return insert_into_leaf(L_O,key,value);
+	else
 		return insert_into_leaf_after_splitting(L_O,key,value);
 }
 
