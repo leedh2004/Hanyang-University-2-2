@@ -878,16 +878,17 @@ node * insert( node * root, int key, int value ) {
  * is the leftmost child), returns -1 to signify
  * this special case.
  */
+/*
 int get_neighbor_index( node * n ) {
 
     int i;
 
-    /* Return the index of the key to the left
+     Return the index of the key to the left
      * of the pointer in the parent pointing
      * to n.  
      * If n is the leftmost child, this means
      * return -1.
-     */
+     
     for (i = 0; i <= n->parent->num_keys; i++)
         if (n->parent->pointers[i] == n)
             return i - 1;
@@ -897,7 +898,7 @@ int get_neighbor_index( node * n ) {
     printf("Node:  %#lx\n", (unsigned long)n);
     exit(EXIT_FAILURE);
 }
-
+*/
 /*
 node * remove_entry_from_node(node * n, int key, node * pointer) {
 
@@ -1873,63 +1874,337 @@ int adjust_root(int64_t leaf_offset){
 	return 0;
 }
 
-int get_neighbor_index(int64_t leaf_offset, int64_t key){
-	int num_keys,i;
-	int64_t parent_offset, keys;
+int get_neighbor_index(int64_t leaf_offset){
+	int num_keys, i;
+	int64_t parent_offset, keys, read_offset;
 
 	lseek(fd,leaf_offset,SEEK_SET);
 	read(fd,&parent_offset,8);
-	
+
 	lseek(fd,parent_offset+12,SEEK_SET);
 	read(fd,&num_keys,8);
 
-	for(i = 0; i < num_keys; i++){
-		lseek(fd,parent_offset+128+(i*16),SEEK_SET);
-		read(fd,&keys,8);
-		if(keys == key) break;
+	for(i=0; i <num_keys; i++){
+		lseek(fd,parent_offset+120+(i*16),SEEK_SET);
+		read(fd,&read_offset,8);
+		if(read_offset == leaf_offset) break;
+	}
+	return i-1;
+}
+
+
+int64_t get_neighbor_offset(int key, int64_t leaf_offset){
+	int num_keys,i;
+	int64_t keys, neighbor_offset, parent_offset;
+	
+	lseek(fd,leaf_offset,SEEK_SET);
+	read(fd,&parent_offset,8);
+
+	lseek(fd,parent_offset+12,SEEK_SET);
+	read(fd,&num_keys,8);
+	
+	lseek(fd,parent_offset+128,SEEK_SET);
+	read(fd,&keys,8); //check parent first key
+	
+	if (key < keys){
+		lseek(fd,parent_offset+136,SEEK_SET);
+		read(fd,&neighbor_offset,8);
+		return neighbor_offset;
+	}
+	else{
+		for(i=0; i < num_keys; i++){
+			lseek(fd,parent_offset+128+(i*16),SEEK_SET);
+			read(fd,&keys,8);
+			if(keys == key) break;
+		}
+		lseek(fd,-16,SEEK_CUR);
+		read(fd,&neighbor_offset,8);
+		return neighbor_offset;
+	}
+}
+
+//병합할 때, neighbor offset으로 병합
+int coalesce_nodes(int64_t neighbor_offset, int64_t N_offset, int neighbor_index, int k_prime)
+{
+	int i, j, neighbor_num_keys, neighbor_insertion_index, is_Leaf, num_keys, n_end;
+	char value[120];
+	int64_t tmp, keys, parent_offset, copy_offset,R_S_O;
+
+	lseek(fd,N_offset,SEEK_SET);
+	read(fd,&num_keys,4);
+
+	if(neighbor_index == -1){
+		tmp = neighbor_offset;
+		neighbor_offset = N_offset;
+		N_offset = neighbor_offset;
+	}
+	
+	lseek(fd,neighbor_offset+12,SEEK_SET);
+	read(fd,&neighbor_num_keys,4);
+
+	neighbor_insertion_index = neighbor_num_keys;
+	
+	lseek(fd,N_offset+8,SEEK_SET);
+	read(fd,&is_Leaf,4);
+	
+	if(!is_Leaf){
+		// internal
+		lseek(fd,N_offset+120,SEEK_SET);
+		read(fd,&tmp,8);
+		lseek(fd,neighbor_offset+(128*(neighbor_insertion_index+1)),SEEK_SET);
+		write(fd,&k_prime,8);
+		write(fd,&tmp,8);
+		
+		neighbor_num_keys++; //copy offset도 올려줘야해
+
+		n_end = num_keys;
+		
+		for(i = neighbor_insertion_index + 1, j = 0; j < n_end; i++, j++) {
+			
+			lseek(fd,N_offset+128+(16*j),SEEK_SET);
+			read(fd,&keys,8);
+			read(fd,&copy_offset,8);
+			
+			lseek(fd,neighbor_offset+128+(16*i),SEEK_SET);
+			write(fd,&keys,8);
+			write(fd,&copy_offset,8);
+
+			lseek(fd,copy_offset,SEEK_SET);
+			write(fd,&neighbor_offset,8);
+			
+			num_keys --;
+			neighbor_num_keys++;
+		}
+
+	}
+	else{
+		for (i = neighbor_insertion_index, j=0; j < num_keys; i++, j++){
+			
+			lseek(fd,N_offset+(128*(j+1)),SEEK_SET);
+			read(fd,&keys,8);
+			read(fd,value,120);
+			
+			lseek(fd,neighbor_offset+(128*(i+1)),SEEK_SET);
+			write(fd,&keys,8);
+			write(fd,value,120);
+			
+			num_keys --;
+			neighbor_num_keys++;
+		}
+		
+		lseek(fd,N_offset+120,SEEK_SET);
+		read(fd,&R_S_O,8);
+		lseek(fd,neighbor_offset+120,SEEK_SET);
+		write(fd,&R_S_O,8);
 	}
 
-	return i - 1;
+	lseek(fd,neighbor_offset+12,SEEK_SET);
+	write(fd,&neighbor_num_keys,4);
+	lseek(fd,N_offset+12,SEEK_SET);
+	write(fd,&num_keys,4);
+
+	lseek(fd,N_offset,SEEK_SET);
+	write(fd,&parent_offset,8);
+	delete_entry(k_prime, parent_offset);
+	return_freepage(N_offset);
 }
-//만약 키가 부모의 0번째 키라면 -1 반환
 
-int delete_entry(int64_t key, int64_t leaf_offset){
+void return_freepage(int64_t N_offset){
 
-	int min_keys, is_Leaf, num_keys, neighbor_index, k_prime_index;
-	int64_t root_offset, k_prime, neighbor_offset;
 
-	n = remove_entry_from_node(key,leaf_offset);
+	
+	return;
+}
+
+
+int redistribute_node(int64_t N_offset, int64_t neighbor_offset, int neighbor_index,
+		int k_prime_index, int k_prime){
+	int i,is_Leaf,num_keys,neighbor_num_keys;
+	char value[120];
+	int64_t tmp, keys, parent_offset, offset;
+	
+	lseek(fd,N_offset,SEEK_SET);
+	read(fd,&parent_offset,8);
+	read(fd,&is_Leaf,4);
+	read(fd,&num_keys,4);
+
+	lseek(fd,N_offset+12,SEEK_SET);
+	read(fd,&neighbor_num_keys,4);
+
+	if(neighbor_index != -1) {
+		if(!is_Leaf) {
+			//case internal	
+			for (i = num_keys; i > 0; i--){
+				lseek(fd,N_offset+128+(16*i),SEEK_SET);
+				read(fd,&keys,8);
+				read(fd,&offset,8);
+				
+				lseek(fd,N_offset+128+(16*(i+1)),SEEK_SET);
+				write(fd,&keys,8);
+				write(fd,&offset,120);
+			}
+			
+			lseek(fd,neighbor_offset+136+(16*(neighbor_num_keys-1)),SEEK_SET);
+			read(fd,&offset,8);
+
+			lseek(fd,offset,SEEK_SET); //parent
+			write(fd,&N_offset,8);
+
+			lseek(fd,N_offset+120,SEEK_SET);
+			write(fd,&offset,8);
+			write(fd,&k_prime,8);
+			
+			lseek(fd,N_offset+128,SEEK_SET);
+			read(fd,&keys,8);
+
+			lseek(fd,parent_offset+128+(16*k_prime_index),SEEK_SET);
+			write(fd,&keys,8);
+		}
+		else {
+			for (i = num_keys; i > 0; i--){
+				lseek(fd,N_offset+(128*i),SEEK_SET);
+				read(fd,&keys,8);
+				read(fd,value,120);
+				
+				lseek(fd,N_offset+(128*(i+1)),SEEK_SET);
+				write(fd,&keys,8);
+				write(fd,value,120);
+			}
+			lseek(fd,neighbor_offset+(128*neighbor_num_keys),SEEK_SET);
+			read(fd,&keys,8);
+			read(fd,value,120);
+			lseek(fd,N_offset+128,SEEK_SET);
+			write(fd,&keys,8);
+			write(fd,value,120);
+			
+			lseek(fd,parent_offset+128+(16*k_prime_index),SEEK_SET);
+			write(fd,&keys,8);
+		}
+	}
+	else {
+		if(is_Leaf) {
+			lseek(fd,neighbor_offset+128,SEEK_SET);
+			read(fd,&keys,8);
+			read(fd,value,120);
+
+			lseek(fd,N_offset+128*(num_keys+1),SEEK_SET);
+			write(fd,&keys,8);
+			write(fd,value,120);
+
+			lseek(fd,neighbor_offset+256,SEEK_SET);
+			read(fd,&keys,8);
+			lseek(fd,parent_offset+128+(16*k_prime_index),SEEK_SET);
+			write(fd,&keys,8);
+
+			for(i = 0; i < neighbor_num_keys - 1;i++){
+				lseek(fd,neighbor_offset+(128*((i+1)+1)),SEEK_SET);
+				read(fd,&keys,8);
+				read(fd,value,120);
+				
+				lseek(fd,neighbor_offset+(128*(i+1)),SEEK_SET);
+				write(fd,&keys,8);
+				write(fd,value,120);
+			}
+		}
+		else{
+			//Case internal
+			lseek(fd,neighbor_offset+120,SEEK_SET);
+			read(fd,&offset,8);
+			read(fd,&keys,8);
+
+			lseek(fd,N_offset+128+(16*num_keys),SEEK_SET);
+			write(fd,&k_prime,8);
+			write(fd,&offset,8);
+			
+			lseek(fd,offset,SEEK_SET);
+			write(fd,&N_offset,8);
+			
+			lseek(fd,parent_offset+128+(16*k_prime_index),SEEK_SET);
+			write(fd,&keys,8);
+
+			for(i=0; i < neighbor_num_keys-1 ; i++){
+				lseek(fd,neighbor_offset+120+(16*(i+1)),SEEK_SET);
+				read(fd,&keys,8);
+				read(fd,&offset,8);
+				
+				lseek(fd,neighbor_offset+(120+(16*i)),SEEK_SET);
+				write(fd,&keys,8);
+				write(fd,&offset,8);
+			}
+			lseek(fd,neighbor_offset+120+(16*(i+1)),SEEK_SET);
+			read(fd,&offset,8);
+
+			lseek(fd,neighbor_offset+(120+(16*i)),SEEK_SET);
+			write(fd,&offset,8);
+		}
+
+		neighbor_num_keys --;
+		num_keys ++;
+		
+		lseek(fd,neighbor_offset+12,SEEK_SET);
+		write(fd,&neighbor_num_keys,4);
+		lseek(fd,N_offset+12,SEEK_SET);
+		write(fd,&num_keys,4);
+	}
+
+
+	return 0;
+}
+
+// key를 가지고 오프셋이 N_offset인 페이지에서, key를 지운다.
+
+int delete_entry(int64_t key, int64_t N_offset){
+
+	int min_keys, is_Leaf, neighbor_num_keys, num_keys; 
+	int capacity,  neighbor_index, k_prime_index,k_prime;
+	int64_t root_offset, neighbor_offset, parent_offset, N_O;
+
+	N_O = remove_entry_from_node(key,N_offset);
 	
 	lseek(fd,8,SEEK_SET);
 	read(fd,&root_offset,8);
 	
-	if ( n == root_offset )
-		return adjust_root(leaf_offset);
+	if ( N_O == root_offset )
+		return adjust_root(N_offset);
 
-	lseek(fd,n+8,SEEK_SET);
+	lseek(fd,N_O+8,SEEK_SET);
 	read(fd,&is_Leaf,4);
 	read(fd,&num_keys,4);
 	
 	if(is_Leaf == 1)
 		min_keys = cut(leaf_order - 1);
 	else
-		min_keys = cut(leaf_order) - 1;
+		min_keys = cut(internal_order) - 1;
 	
 	//종료 조건 1
-
 	if(num_keys >= min_keys)
 		return 0;
 	
 	//leaf offset은, 지워야 할 키를 가지고 있는 page offset이다.
-
-	neighbor_index = get_neighbor_index(leaf_offset,key);
-	neighbor_offset = neighbor_index == -1 ? 
-
-
-	k_prime_index = neighbor_index == -1 ? 0 : neighbor_index; //이렇게 하면, 2번째 1번째일 때 같이 0인데 ?..
 	
+	neighbor_index = get_neighbor_index(N_offset);
 	
+	//k_prime_index는 N과 Neighbor사이의 키다.
 
+	k_prime_index = neighbor_index == -1 ? 0 : neighbor_index;
+	
+	lseek(fd,N_offset,SEEK_SET);
+	read(fd,&parent_offset,8);
+
+	lseek(fd,parent_offset+128+(16*k_prime_index),SEEK_SET);
+	read(fd,&k_prime,8);
+
+	neighbor_offset = get_neighbor_offset(key, N_offset); //이거.. 
+	//neighbor_index사용하는게 나을거 같은데?
+	lseek(fd,neighbor_offset+12,SEEK_SET);
+	read(fd,&neighbor_num_keys,4);
+	
+	capacity = is_Leaf ? leaf_order : internal_order - 1; //대충 이해함
+
+	if ( neighbor_num_keys + num_keys < capacity )
+		return coalesce_nodes(neighbor_offset, N_offset, neighbor_index, k_prime);
+	else
+		return redistribute_node(N_offset, neighbor_offset, neighbor_index, k_prime_index,k_prime);
 }
 
 
