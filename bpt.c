@@ -1805,34 +1805,26 @@ int insert(int64_t key, char * value){
 		return insert_into_leaf_after_splitting(L_O,key,value);
 }
 
-
-
-
-
-
-
 /* 
    delete
 		  */
-   
-
-
-
 
 //리프 노드로 가서, 지워주고, shift, num_keys 감소
+
 int64_t remove_entry_from_node(int64_t key, int64_t leaf_offset){
 	
 	int i, num_keys;
 	int64_t leaf_keys;
-	char * leaf_values;
-	leaf_values = (char*)malloc(sizeof(char)*120);
+	char leaf_values[120];
 
 	lseek(fd,leaf_offset+12,SEEK_SET);
 	read(fd,&num_keys,4);
 
 	i = 0;
+
 	lseek(fd,leaf_offset+128,SEEK_SET);
 	read(fd,&leaf_keys,8);
+
 
 	while(key != leaf_keys){
 		i++;
@@ -1852,17 +1844,17 @@ int64_t remove_entry_from_node(int64_t key, int64_t leaf_offset){
 	lseek(fd,leaf_offset+12,SEEK_SET);
 	write(fd,&num_keys,4);
 	
-	free(leaf_values);
-	
 	return leaf_offset;
 }
 
 int adjust_root(int64_t leaf_offset){
 	int num_keys,is_Leaf;
 	int64_t R_O;
+
 	lseek(fd,leaf_offset+8,SEEK_SET);
 	read(fd,&is_Leaf,4);
 	read(fd,&num_keys,4);
+	
 	if (num_keys > 0)
 		return 0;
 	/* Case: empty root */
@@ -1881,11 +1873,31 @@ int adjust_root(int64_t leaf_offset){
 	return 0;
 }
 
+int get_neighbor_index(int64_t leaf_offset, int64_t key){
+	int num_keys,i;
+	int64_t parent_offset, keys;
+
+	lseek(fd,leaf_offset,SEEK_SET);
+	read(fd,&parent_offset,8);
+	
+	lseek(fd,parent_offset+12,SEEK_SET);
+	read(fd,&num_keys,8);
+
+	for(i = 0; i < num_keys; i++){
+		lseek(fd,parent_offset+128+(i*16),SEEK_SET);
+		read(fd,&keys,8);
+		if(keys == key) break;
+	}
+
+	return i - 1;
+}
+//만약 키가 부모의 0번째 키라면 -1 반환
 
 int delete_entry(int64_t key, int64_t leaf_offset){
 
-	int min_keys,is_Leaf,num_keys,n;
-	int64_t root_offset;
+	int min_keys, is_Leaf, num_keys, neighbor_index, k_prime_index;
+	int64_t root_offset, k_prime, neighbor_offset;
+
 	n = remove_entry_from_node(key,leaf_offset);
 	
 	lseek(fd,8,SEEK_SET);
@@ -1899,12 +1911,24 @@ int delete_entry(int64_t key, int64_t leaf_offset){
 	read(fd,&num_keys,4);
 	
 	if(is_Leaf == 1)
-		min_keys = 15;
+		min_keys = cut(leaf_order - 1);
 	else
-		min_keys = 123; //이건 확실하진 않아..
+		min_keys = cut(leaf_order) - 1;
 	
+	//종료 조건 1
+
 	if(num_keys >= min_keys)
-		return 0;	
+		return 0;
+	
+	//leaf offset은, 지워야 할 키를 가지고 있는 page offset이다.
+
+	neighbor_index = get_neighbor_index(leaf_offset,key);
+	neighbor_offset = neighbor_index == -1 ? 
+
+
+	k_prime_index = neighbor_index == -1 ? 0 : neighbor_index; //이렇게 하면, 2번째 1번째일 때 같이 0인데 ?..
+	
+	
 
 }
 
@@ -1918,6 +1942,6 @@ int delete(int64_t key){
 	free(f);
 
 	leaf_offset = find_leaf(key);
-	
+
 	return delete_entry(key,leaf_offset);
 }
