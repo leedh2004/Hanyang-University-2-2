@@ -455,7 +455,7 @@ int cut( int length ) {
     if (length % 2 == 0)
         return length/2;
     else
-        return length/2 + 1;
+        return length/2+1;
 }
 
 
@@ -898,7 +898,7 @@ int get_neighbor_index( node * n ) {
     exit(EXIT_FAILURE);
 }
 
-
+/*
 node * remove_entry_from_node(node * n, int key, node * pointer) {
 
     int i, num_pointers;
@@ -939,22 +939,22 @@ node * remove_entry_from_node(node * n, int key, node * pointer) {
 node * adjust_root(node * root) {
 
     node * new_root;
-
+*/
     /* Case: nonempty root.
      * Key and pointer have already been deleted,
      * so nothing to be done.
      */
-
+/*
     if (root->num_keys > 0)
         return root;
-
+*/
     /* Case: empty root. 
      */
 
     // If it has a child, promote 
     // the first (only) child
     // as the new root.
-
+/*
     if (!root->is_leaf) {
         new_root = root->pointers[0];
         new_root->parent = NULL;
@@ -972,47 +972,47 @@ node * adjust_root(node * root) {
 
     return new_root;
 }
-
-
+*/
 /* Coalesces a node that has become
  * too small after deletion
  * with a neighboring node that
  * can accept the additional entries
  * without exceeding the maximum.
  */
+/*
 node * coalesce_nodes(node * root, node * n, node * neighbor, int neighbor_index, int k_prime) {
 
     int i, j, neighbor_insertion_index, n_end;
     node * tmp;
-
+*/
     /* Swap neighbor with node if node is on the
      * extreme left and neighbor is to its right.
      */
-
+/*
     if (neighbor_index == -1) {
         tmp = n;
         n = neighbor;
         neighbor = tmp;
     }
-
+*/
     /* Starting point in the neighbor for copying
      * keys and pointers from n.
      * Recall that n and neighbor have swapped places
      * in the special case of n being a leftmost child.
      */
-
+/*
     neighbor_insertion_index = neighbor->num_keys;
-
+*/
     /* Case:  nonleaf node.
      * Append k_prime and the following pointer.
      * Append all pointers and keys from the neighbor.
      */
-
+/*
     if (!n->is_leaf) {
-
+*/
         /* Append k_prime.
          */
-
+/*
         neighbor->keys[neighbor_insertion_index] = k_prime;
         neighbor->num_keys++;
 
@@ -1025,28 +1025,28 @@ node * coalesce_nodes(node * root, node * n, node * neighbor, int neighbor_index
             neighbor->num_keys++;
             n->num_keys--;
         }
-
+*/
         /* The number of pointers is always
          * one more than the number of keys.
          */
-
+/*
         neighbor->pointers[i] = n->pointers[j];
-
+*/
         /* All children must now point up to the same parent.
          */
-
+/*
         for (i = 0; i < neighbor->num_keys + 1; i++) {
             tmp = (node *)neighbor->pointers[i];
             tmp->parent = neighbor;
         }
     }
-
+*/
     /* In a leaf, append the keys and pointers of
      * n to the neighbor.
      * Set the neighbor's last pointer to point to
      * what had been n's right neighbor.
      */
-
+/*
     else {
         for (i = neighbor_insertion_index, j = 0; j < n->num_keys; i++, j++) {
             neighbor->keys[i] = n->keys[j];
@@ -1063,24 +1063,25 @@ node * coalesce_nodes(node * root, node * n, node * neighbor, int neighbor_index
     return root;
 }
 
-
+*/
 /* Redistributes entries between two nodes when
  * one has become too small after deletion
  * but its neighbor is too big to append the
  * small node's entries without exceeding the
  * maximum
  */
+/*
 node * redistribute_nodes(node * root, node * n, node * neighbor, int neighbor_index, 
         int k_prime_index, int k_prime) {  
 
     int i;
     node * tmp;
-
+*/
     /* Case: n has a neighbor to the left. 
      * Pull the neighbor's last key-pointer pair over
      * from the neighbor's right end to n's left end.
      */
-
+/*
     if (neighbor_index != -1) {
         if (!n->is_leaf)
             n->pointers[n->num_keys + 1] = n->pointers[n->num_keys];
@@ -1103,13 +1104,13 @@ node * redistribute_nodes(node * root, node * n, node * neighbor, int neighbor_i
             n->parent->keys[k_prime_index] = n->keys[0];
         }
     }
-
+*/
     /* Case: n is the leftmost child.
      * Take a key-pointer pair from the neighbor to the right.
      * Move the neighbor's leftmost key-pointer pair
      * to n's rightmost position.
      */
-
+/*
     else {  
         if (n->is_leaf) {
             n->keys[n->num_keys] = neighbor->keys[0];
@@ -1130,23 +1131,24 @@ node * redistribute_nodes(node * root, node * n, node * neighbor, int neighbor_i
         if (!n->is_leaf)
             neighbor->pointers[i] = neighbor->pointers[i + 1];
     }
-
+*/
     /* n now has one more key and one more pointer;
      * the neighbor has one fewer of each.
      */
-
+/*
     n->num_keys++;
     neighbor->num_keys--;
 
     return root;
 }
-
+*/
 
 /* Deletes an entry from the B+ tree.
  * Removes the record and its key and pointer
  * from the leaf, and then makes all appropriate
  * changes to preserve the B+ tree properties.
  */
+/*
 node * delete_entry( node * root, node * n, int key, void * pointer ) {
 
     int min_keys;
@@ -1158,13 +1160,13 @@ node * delete_entry( node * root, node * n, int key, void * pointer ) {
     // Remove key and pointer from node.
 
     n = remove_entry_from_node(n, key, pointer);
-
+*/
     /* Case:  deletion from the root. 
      */
-
+/*
     if (n == root) 
         return adjust_root(root);
-
+*/
 
     /* Case:  deletion from a node below the root.
      * (Rest of function body.)
@@ -1174,15 +1176,15 @@ node * delete_entry( node * root, node * n, int key, void * pointer ) {
      * to be preserved after deletion.
      */
 
-    min_keys = n->is_leaf ? cut(order - 1) : cut(order) - 1;
+  //  min_keys = n->is_leaf ? cut(order - 1) : cut(order) - 1;
 
     /* Case:  node stays at or above minimum.
      * (The simple case.)
      */
-
+/*
     if (n->num_keys >= min_keys)
         return root;
-
+*/
     /* Case:  node falls below minimum.
      * Either coalescence or redistribution
      * is needed.
@@ -1194,26 +1196,25 @@ node * delete_entry( node * root, node * n, int key, void * pointer ) {
      * between the pointer to node n and the pointer
      * to the neighbor.
      */
-
+/*
     neighbor_index = get_neighbor_index( n );
     k_prime_index = neighbor_index == -1 ? 0 : neighbor_index;
     k_prime = n->parent->keys[k_prime_index];
     neighbor = neighbor_index == -1 ? n->parent->pointers[1] : 
         n->parent->pointers[neighbor_index];
-
-    capacity = n->is_leaf ? order : order - 1;
-
+  capacity = n->is_leaf ? order : order - 1;
+*/
     /* Coalescence. */
-
+/*
     if (neighbor->num_keys + n->num_keys < capacity)
         return coalesce_nodes(root, n, neighbor, neighbor_index, k_prime);
-
+*/
     /* Redistribution. */
-
+/*
     else
         return redistribute_nodes(root, n, neighbor, neighbor_index, k_prime_index, k_prime);
 }
-
+*/
 
 
 /* Master deletion function.
@@ -1253,8 +1254,70 @@ node * destroy_tree(node * root) {
 	return NULL;
 }
 */
+/*
+char * find(int64_t key){
+		
+	int i = 0, num_keys;
+	int64_t page_offset, keys;
+	char arr[120], *val;
+	
+	page_offset = find_leaf(key);
+	if(page_offset == -1) return NULL; 
+
+	lseek(fd,page_offset+12,SEEK_SET);
+	read(fd,&num_keys,4);
+	
+	if(num_keys == 0) return NULL;
+
+	lseek(fd,page_offset+128,SEEK_SET);
+	
+	for(i=0; i < num_keys; i++){
+		read(fd,&keys,8);
+		if(key == keys) break;
+		lseek(fd,120,SEEK_CUR);
+	}
+	if ( i == num_keys) return NULL;
+	else{
+		//read(fd,arr,120);
+		//val = arr;
+		return "abc";
+	}
+}
+*/
+/*
+char * find(int64_t key, char * value){
+		
+	int i = 0, num_keys;
+	int64_t page_offset, keys;
+	char take[120], *re;
+	
+	page_offset = find_leaf(key);
+	if(page_offset == -1) return NULL; 
+
+	lseek(fd,page_offset+12,SEEK_SET);
+	read(fd,&num_keys,4);
+	
+	if(num_keys == 0) return NULL;
+
+	lseek(fd,page_offset+128,SEEK_SET);
+	printf("num_keys: %d",num_keys);
+	for(i=0; i < num_keys; i++){
+		read(fd,&keys,8);
+		if( key == keys) break;
+		lseek(fd,120,SEEK_CUR);
+	}
+	if ( i == num_keys) return NULL;
+	else{
+		read(fd,take,120);
+		re = take;
+		return re;
+	}
+}
+*/
+
+
 //LDH
-//extern int freepage_num
+//extern int freepage_num, leaf_oder, internal_order;
 
 void makefreepage(){ //여기서 헤더페이지의 Number of page 관리해야될 것 같음, 나중에 구현
 	int i;
@@ -1283,7 +1346,9 @@ int64_t takefreepage(){ // 프리페이지의 오프셋 반환
 	freepage_num--; //프리페이지 갯수 차감
 	lseek(fd,0,SEEK_SET);
 	NF_O = F_O + 4096;
+	
 	write(fd,&NF_O,8); // 헤더페이지의 프리페이지 오프셋 변경
+	printf("take free page %ld\n", F_O);
 	return F_O;
 }
 
@@ -1318,12 +1383,14 @@ int open_db(char * pathname){
 		return -1; // fail
 }
 
-char * find(int64_t key, char *value){
+char * find(int64_t key){
 		
 	int i = 0, num_keys;
 	int64_t page_offset, keys;
 	char *re;
 	
+	re = (char*)malloc(sizeof(char)*120);
+
 	page_offset = find_leaf(key);
 	if(page_offset == -1) return NULL; 
 
@@ -1335,14 +1402,13 @@ char * find(int64_t key, char *value){
 	lseek(fd,page_offset+128,SEEK_SET);
 	for(i=0; i < num_keys; i++){
 		read(fd,&keys,8);
+		if(key == keys) break;
 		lseek(fd,120,SEEK_CUR);
-		if( key == keys) break;
 	}
 	if ( i == num_keys) return NULL;
 	else{
-		//lseek(fd,-120,SEEK_CUR);
-		//read(fd,re,120);
-		return value;
+		read(fd,re,120);
+		return re;
 	}
 }
 
@@ -1378,6 +1444,7 @@ int64_t find_leaf(int64_t key){
 	}
 	return page_offset; // Leaf의 page offset
 }
+//디버깅 완료
 
 int64_t make_node(){
 
@@ -1394,6 +1461,7 @@ int64_t make_node(){
 
 	return offset;
 }
+//디버깅 완료
 
 int64_t make_leaf(){
 
@@ -1406,9 +1474,9 @@ int64_t make_leaf(){
 	return L_O;
 }
 
-
+//디버깅 완료
 int64_t start_new_tree(int64_t key, char * value){
-	int64_t F_O, val, L_O, R_O;
+	int64_t F_O, val, L_O, R_O, R_S_O;
 	int isLeaf,num_keys;
 	L_O = make_leaf();// 리프 만듬 
 	lseek(fd,L_O+128,SEEK_SET); //Leaf node의 첫번째 키 값으로 이동
@@ -1419,17 +1487,22 @@ int64_t start_new_tree(int64_t key, char * value){
 	write(fd,&num_keys,4);
 	lseek(fd,8,SEEK_SET);
 	write(fd,&L_O,8); // Root page offset 설정
+	R_S_O = 0;
+	lseek(fd,L_O+120,SEEK_SET);
+	write(fd,&R_S_O,8);
 	return 0;
 }
 
+//디버깅 완료
 int insert_into_leaf(int64_t L_O, int64_t key, char* value){
 	int insertion_point,num_keys, copy;
 	int64_t leaf_key;
-	char *leaf_value;
+	char leaf_value[120];
 
 	lseek(fd,L_O+12,SEEK_SET); // L_O number of keys 로이동
 	read(fd,&num_keys,4);
-	lseek(fd,L_O + 128*num_keys,SEEK_SET); //L_O 마지막 키 값으로 이동
+
+	lseek(fd,L_O +128*num_keys,SEEK_SET); //L_O 마지막 키 값으로 이동
 	read(fd,&leaf_key,8);
 	read(fd,leaf_value,120);
 
@@ -1450,17 +1523,19 @@ int insert_into_leaf(int64_t L_O, int64_t key, char* value){
 	lseek(fd,L_O + (insertion_point+1)*128,SEEK_SET);
 	write(fd,&key,8);
 	write(fd,value,120);
+
 	lseek(fd,L_O+12,SEEK_SET);
 	num_keys++;
 	write(fd,&num_keys,4);
+
 	return 0;
 }
-//부모이어줄 필요도 없고, 헤더페이지도 생각 안해도 됨
 
+//디버깅완료
 int insert_into_node(int64_t P_O, int64_t N_key, int64_t N_L_O){
 
 	int num_keys, insertion_point;
-	int64_t node_key, page_offset;
+	int64_t node_key, page_offset, A = N_key, B = N_L_O;
 
 	lseek(fd,P_O+12,SEEK_SET);
 	read(fd,&num_keys,4);
@@ -1481,27 +1556,31 @@ int insert_into_node(int64_t P_O, int64_t N_key, int64_t N_L_O){
 		read(fd,&node_key,8);
 		read(fd,&page_offset,8);
 	}
+
 	lseek(fd,P_O+128+((insertion_point)*16),SEEK_SET);
-	write(fd,&N_key,8);
-	write(fd,&N_L_O,8);
+	write(fd,&A,8);
+	write(fd,&B,8);
+	
+	lseek(fd,P_O+12,SEEK_SET);
+	num_keys++;
+	write(fd,&num_keys,4);
 	return 0;
 }
 
-int insert_into_node_after_splitting(int64_t P_O, int64_t N_key, int64_t N_L_O){ //부모의 부모로 전달한다..
-	//P_O에 있는 페런트 페이지 오프셋이 꽉찼으니까 이걸 분할해줘야함 이제
-	//총 248개의 키값들이 있다.
-	// 0 ~ 123 / 123 ~ 247 으로 나누고 123이 부모가 되는거야
 
-	//여기서 하는게, 키 값을 P_O에 정렬해서 넣어줘
-	//근데 꽉차 그러면, 그럼 여기서 이제 P_O를 스플릿하는거야
-	//부모자식도 이어주는거 생각해야 하고
+int insert_into_node_after_splitting(int64_t P_O, int64_t N_key, int64_t N_L_O){ 
+	
 	int i,j,insertion_point,num_keys;
-	int64_t N_P_O, node_key, node_offset,copy_key,copy_offset,N_offset;
+	int64_t N_P_O, node_key, node_offset,copy_key,copy_offset,N_offset, mid_key,mid_offset;
 	
 	N_P_O = make_node();
+	/*lseek(fd,L_O,SEEK_SET);
+	write(fd,&N_P_O,8);
+	*/
 	
 	lseek(fd,P_O+12,SEEK_SET); // 추가할 P_O의 number of keys 로 이동
 	read(fd,&num_keys,4);
+
 	lseek(fd,P_O+128+((num_keys-1)*16),SEEK_SET); // 추가할 P_O의 마지막 키 값으로 이동
 	read(fd,&node_key,8);
 	read(fd,&node_offset,8);
@@ -1515,37 +1594,57 @@ int insert_into_node_after_splitting(int64_t P_O, int64_t N_key, int64_t N_L_O){
 		
 		insertion_point--;
 		lseek(fd,P_O + 128 + ((insertion_point-1)*16),SEEK_SET);
-		write(fd,&node_key,8);
-		write(fd,&node_offset,8);
+		read(fd,&node_key,8);
+		read(fd,&node_offset,8);
 	}
 
-	lseek(fd,P_O+128+((insertion_point)*16),SEEK_SET);
+	lseek(fd,P_O+128+(insertion_point*16),SEEK_SET);
 	write(fd,&N_key,8);
 	write(fd,&N_L_O,8);
-	//이 밑에 3줄 뭔가 필요없는 것 같은데 혹시나해서 그냥  안건들래..
-	lseek(fd,P_O+12,SEEK_SET);
-	num_keys++;
-	write(fd,&num_keys,4);
+	
 	//아 123빼고 옮겨야 하구나! 해결했다 씨바 123오프셋값을 맨왼쪽에 써주고 124 올리면 된다
 	//그리고 자식의 부모 오프셋값을 N_P_O해주면 되겠다.
-	lseek(fd,P_O+128+(16*123),SEEK_SET);
-	read(fd,&N_key,8);
-	read(fd,&N_offset,8);
-	lseek(fd,N_P_O+120,SEEK_SET);
-	write(fd,&N_offset,8);
+	
+	int split = cut(internal_order); //4 -> 2, 5-> 3, 6-> 3
+//여기 밑에 좀 이상해
+	lseek(fd,P_O+128+(16*(split-1)),SEEK_SET);
+	read(fd,&mid_key,8);
+	read(fd,&mid_offset,8);
+	
+	lseek(fd,mid_offset,SEEK_SET);
+	write(fd,&N_P_O,8);
 
-	for(i=124,j=0; i<248;i++,j++){
+	lseek(fd,N_P_O+120,SEEK_SET);
+	write(fd,&mid_offset,8);
+
+	for(i=split, j=0; i < internal_order; i++,j++){
 		lseek(fd,P_O+128+(i*16),SEEK_SET);
 		read(fd,&copy_key,8);
 		read(fd,&copy_offset,8);
+
+		lseek(fd,copy_offset,SEEK_SET);
+		write(fd,&N_P_O,8);
+		
 		lseek(fd,N_P_O+128+(j*16),SEEK_SET);
 		write(fd,&copy_key,8);
 		write(fd,&copy_offset,8);
 	}
+	
+	/* 이 부분은 디버깅 해봐야 해, 뭐를 올리는지 아직 정확하게는 몰라! */
+
+	lseek(fd,P_O+12,SEEK_SET);
+	num_keys = split - 1;
+	write(fd,&num_keys,4);
+
+	lseek(fd,N_P_O+12,SEEK_SET);
+	num_keys = internal_order - split;
+	write(fd,&num_keys,4);
+	printf("insert into parent after splitting\n");
 	//이제 부모 설정은 insert into parent한테 맡긴다.
-	return insert_into_parent(P_O,N_P_O,N_key);
+	return insert_into_parent(P_O,N_P_O,mid_key);
 }
-//여기까지 디버깅
+
+//여기맨 밑 전까지 디버깅
 int insert_into_parent(int64_t L_O, int64_t N_L_O, int64_t N_key){
 	//맨처음 리프노드의 parent를 내가 -1로 했다는 가정 하에 작성해봄
 	//즉 루트가 리프인 경우를  생각해야 하니까
@@ -1557,53 +1656,59 @@ int insert_into_parent(int64_t L_O, int64_t N_L_O, int64_t N_key){
 
 	if(P_O == -1){ //부모가 존재하지 않는다, 새로운 루트 생성해야 함
 		R_O = make_node();
+		//printf("12288다음은 여기겠고");
+
 		num_keys = 1;
 		lseek(fd,R_O+12,SEEK_SET);
-		write(fd,&num_keys,4); // 자식 1개 생성되니까
+		write(fd,&num_keys,4); // 키가 1개 생성되니까
 		
 		lseek(fd,R_O+120,SEEK_SET);
 		write(fd,&L_O,8);
 		write(fd,&N_key,8);
-		write(fd,&N_L_O,8); // 키값들 넣어줬어
+		write(fd,&N_L_O,8); // 키값+오프셋들 넣어줬어
+
 		lseek(fd,8,SEEK_SET);
 		write(fd,&R_O,8); //헤더페이지에서 이어줌
 		//이제 자식들의 부모를 이어주자
+		
 		lseek(fd,L_O,SEEK_SET);
 		write(fd,&R_O,8);
+
 		lseek(fd,N_L_O,SEEK_SET);
 		write(fd,&R_O,8);
+		printf("make new root----\n");
 		return 0;
-	}else{ //여기서 아직 자식들의 부모를 이어주지 않았음, 그냥 여기서 이어주면 될 것 같아.
+	}else{ 
+		//여기서 아직 자식들의 부모를 이어주지 않았음, 그냥 여기서 이어주면 될 것 같아.
 		lseek(fd,P_O+12,SEEK_SET);
 		read(fd,&num_keys,4);
-		if (num_keys < 248){//여기서 이어주고 부모 자식 이어주자 어차피 스플릿 안생겨
-			lseek(fd,L_O,SEEK_SET);
-			write(fd,&P_O,8);
+		
+		if (num_keys < internal_order - 1){//247 여기서 이어주고 부모 자식 이어주자 어차피 스플릿 안생겨
 			lseek(fd,N_L_O,SEEK_SET);
 			write(fd,&P_O,8);
-			return insert_into_node(P_O, N_key, N_L_O); // 넣어야 할 parent page offset과 넣어야 할 key 값을 전달한다.
+			return insert_into_node(P_O, N_key, N_L_O); 
+			// 넣어야 할 parent page offset과 넣어야 할 key 값을 전달한다.
 		}
 		return insert_into_node_after_splitting(P_O, N_key, N_L_O);
 	}
 }
 
-
+//이거 사실 여기서 넣을 필요도 없는데, 잘못했네
+//디버깅 완료
 //넣을 리프페이지 , 키값, value값 받았음, 디버깅 해봤는데 오류 없는 것 같아.
 int insert_into_leaf_after_splitting(int64_t L_O, int64_t key, char * value){
 	int i,j,insertion_point,num_keys,leaf_key;
 	int64_t N_L_O, R_S_O, copy_key, re_key,N_key; //new leaf offset, right sibling offset, return key
-	char *copy_val,*re_value,*leaf_value;
+	char copy_val[120],leaf_value[120];
 
-	N_L_O = make_leaf();
-	
-	/* 위 함수 복붙했음 일단 추가를 한 뒤에, 나눌 생각
-	   쓰여진 데이터들은 일단은 지우지 않을 생각임, 
-	   왜냐면 어차피 num_keys에 의해 관리될 것이므로 */
-/*
+
+//마지막 수정.. 필요 없는 거였어 생각해보니
+/*	
 	lseek(fd,L_O+12,SEEK_SET); // L_O로 number of keys 로이동
 	read(fd,&num_keys,4); //사실 31이니까 굳이 읽을필요는 없지..
 */
-	num_keys = 30;
+
+	num_keys = leaf_order - 1;
 
 	lseek(fd,L_O + 128*num_keys,SEEK_SET); //L_O 마지막 키 값으로 이동
 	read(fd,&leaf_key,8);
@@ -1630,7 +1735,8 @@ int insert_into_leaf_after_splitting(int64_t L_O, int64_t key, char * value){
 	  그러면 15부터 30까지 새로운 노드고, 이전노드에 right sibiling offset으로 이어준다
 	  루트에 15를 추가해야 겠지?*/
 	//이전 노드의  right sibling을 새로운 애의 right sibling 으로 설정하자
-	
+
+	N_L_O = make_leaf();
 	lseek(fd,L_O+120,SEEK_SET); 
 	read(fd,&R_S_O,8); //원래 right sibling offset
 
@@ -1639,12 +1745,14 @@ int insert_into_leaf_after_splitting(int64_t L_O, int64_t key, char * value){
 	
 	lseek(fd,N_L_O+120,SEEK_SET);
 	write(fd,&R_S_O,8);
+	
 	//이어주는 것 까지 설정
+	//원래 노드 keys[0]~keys[15] 
 	//new_leaf_node에 keys[15]~keys[30] insertion
 	
 	//현재 꽉찬 노드
-
-	for(i=15,j=0;i<31;i++,j++){
+	
+	for(i=leaf_order / 2 ,j=0; i < leaf_order; i++,j++){ //15 , 31에서 수정.
 		lseek(fd,L_O+((i+1)*128),SEEK_SET);
 		read(fd,&copy_key,8);
 		read(fd,copy_val,120);
@@ -1657,15 +1765,15 @@ int insert_into_leaf_after_splitting(int64_t L_O, int64_t key, char * value){
 	read(fd,&N_key,8);
 
 	lseek(fd,L_O+12,SEEK_SET);
-	copy_key = 15; 
-	write(fd,&copy_key,8);
+	num_keys = leaf_order / 2; //15 
+	write(fd,&num_keys,8);
 
 	lseek(fd,N_L_O+12,SEEK_SET);
-	copy_key = 16;
-	write(fd,&copy_key,8);
+	num_keys = leaf_order - num_keys; //16
+	write(fd,&num_keys,8);
 
 	//number of keys 값들 수정
-	printf("여기까진!");
+	printf("-------split leaf!\n");
 	return insert_into_parent(L_O, N_L_O, N_key); //부모 공유는 여기서!
 }
 
@@ -1674,27 +1782,142 @@ int insert(int64_t key, char * value){
 
 	int64_t R_O,F_O,L_O,val; // root page offset, free page offset, leaf page offset
 	int num_keys;
+	char * f;
 
-	if (find(key,value) != NULL) return -1; // 존재하므로 실패
+	if ( (f =find(key)) != NULL) return -1; // 존재하므로 실패
+	free(f);
 
 	lseek(fd,8,SEEK_SET);
 	read(fd,&R_O,8);// root page offset
 	
-	if(R_O == -1){
+	if(R_O == -1)
 		return start_new_tree(key,value);
-	}
 
 	L_O = find_leaf(key); //넣어야 할 리프 페이지의 오프셋 받음
-	printf("L_O : %ld\n",L_O);
+	//printf("L_O : %ld\n",L_O);
 
 	lseek(fd,L_O+12,SEEK_SET); // 리프 페이지로 이동
 	read(fd,&num_keys,4); // key 개수 받음 
-	//order 31
 	
-	if (num_keys < 31){
-		insert_into_leaf(L_O,key,value);
-		return 0;
-	}else
+	if (num_keys < leaf_order - 1) // if leaf order 31 -> num_keys 30이면 밑으로 가야함
+		return insert_into_leaf(L_O,key,value);
+	else
 		return insert_into_leaf_after_splitting(L_O,key,value);
 }
 
+
+
+
+
+
+
+/* 
+   delete
+		  */
+   
+
+
+
+
+//리프 노드로 가서, 지워주고, shift, num_keys 감소
+int64_t remove_entry_from_node(int64_t key, int64_t leaf_offset){
+	
+	int i, num_keys;
+	int64_t leaf_keys;
+	char * leaf_values;
+	leaf_values = (char*)malloc(sizeof(char)*120);
+
+	lseek(fd,leaf_offset+12,SEEK_SET);
+	read(fd,&num_keys,4);
+
+	i = 0;
+	lseek(fd,leaf_offset+128,SEEK_SET);
+	read(fd,&leaf_keys,8);
+
+	while(key != leaf_keys){
+		i++;
+		lseek(fd,120,SEEK_CUR);
+		read(fd,&leaf_keys,8);
+	} // i는 leaf_keys[i]야 0부터 시작
+
+	for(++i; i < num_keys ; i++){
+		lseek(fd,leaf_offset+((i+1)*128),SEEK_SET);
+		read(fd,&leaf_keys,8);
+		read(fd,leaf_values,120);
+		lseek(fd,-256,SEEK_CUR);
+		write(fd,&leaf_keys,8);
+		write(fd,leaf_values,120);
+	}
+	num_keys--;
+	lseek(fd,leaf_offset+12,SEEK_SET);
+	write(fd,&num_keys,4);
+	
+	free(leaf_values);
+	
+	return leaf_offset;
+}
+
+int adjust_root(int64_t leaf_offset){
+	int num_keys,is_Leaf;
+	int64_t R_O;
+	lseek(fd,leaf_offset+8,SEEK_SET);
+	read(fd,&is_Leaf,4);
+	read(fd,&num_keys,4);
+	if (num_keys > 0)
+		return 0;
+	/* Case: empty root */
+	// 아직 is_Leaf가 0인 케이스는 이해를 못했음.
+	if(!is_Leaf){
+		lseek(fd,leaf_offset+120,SEEK_SET);
+		read(fd,&R_O,8);
+		lseek(fd,8,SEEK_SET);
+		write(fd,&R_O,8);
+	}
+	else{
+		lseek(fd,8,SEEK_SET);
+		R_O = -1;
+		write(fd,&R_O,8);
+	}
+	return 0;
+}
+
+
+int delete_entry(int64_t key, int64_t leaf_offset){
+
+	int min_keys,is_Leaf,num_keys,n;
+	int64_t root_offset;
+	n = remove_entry_from_node(key,leaf_offset);
+	
+	lseek(fd,8,SEEK_SET);
+	read(fd,&root_offset,8);
+	
+	if ( n == root_offset )
+		return adjust_root(leaf_offset);
+
+	lseek(fd,n+8,SEEK_SET);
+	read(fd,&is_Leaf,4);
+	read(fd,&num_keys,4);
+	
+	if(is_Leaf == 1)
+		min_keys = 15;
+	else
+		min_keys = 123; //이건 확실하진 않아..
+	
+	if(num_keys >= min_keys)
+		return 0;	
+
+}
+
+
+int delete(int64_t key){
+	
+	int64_t leaf_offset;
+	char * f;
+
+	if ( (f=find(key)) == NULL)  return -1; // 존재하지 않으므로 실패
+	free(f);
+
+	leaf_offset = find_leaf(key);
+	
+	return delete_entry(key,leaf_offset);
+}
